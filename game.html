@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IM535 Smart Village - Revision Game</title>
+<style>
+  :root {
+    --bg1:#0f172a; --bg2:#1e293b; --card:#ffffff; --primary:#4f46e5; --primary-dark:#3730a3;
+    --success:#16a34a; --danger:#dc2626; --muted:#64748b; --accent:#06b6d4;
+  }
+  *{box-sizing:border-box; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
+  body{margin:0; min-height:100vh; background:linear-gradient(135deg,var(--bg1),var(--bg2) 60%, #312e81); color:#1e293b; display:flex; flex-direction:column; align-items:center; padding:20px;}
+  .app{width:100%; max-width:760px;}
+  header.title{ text-align:center; color:#fff; margin-bottom:20px;}
+  header.title h1{ font-size:1.8rem; margin:0 0 4px;}
+  header.title p{ margin:0; opacity:.8; font-size:.95rem;}
+  .screen{ display:none; }
+  .screen.active{ display:block; }
+  .card{ background:var(--card); border-radius:16px; padding:28px; box-shadow:0 12px 30px rgba(0,0,0,.25);}
+  .modes{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:18px 0;}
+  .mode-btn{ border:2px solid #e2e8f0; border-radius:12px; padding:16px; background:#f8fafc; cursor:pointer; text-align:left; transition:.15s;}
+  .mode-btn:hover{ border-color:var(--primary); background:#eef2ff; transform:translateY(-2px);}
+  .mode-btn.selected{ border-color:var(--primary); background:#e0e7ff;}
+  .mode-btn:last-child{ grid-column:1 / -1;}
+  .mode-btn h3{margin:0 0 4px; font-size:1.05rem; color:var(--primary-dark);}
+  .mode-btn p{margin:0; font-size:.85rem; color:var(--muted);}
+  .row{ display:flex; align-items:center; gap:10px; margin:14px 0; flex-wrap:wrap;}
+  .lectures-section{ margin-top:16px;}
+  .lectures-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-bottom:4px;}
+  .lecture-chip{ display:flex; align-items:center; gap:6px; border:2px solid #e2e8f0; border-radius:10px; padding:8px 10px; cursor:pointer; font-size:.82rem; background:#f8fafc; transition:.12s; user-select:none;}
+  .lecture-chip:hover{ border-color:var(--primary); background:#eef2ff;}
+  .lecture-chip.selected{ border-color:var(--primary); background:#e0e7ff;}
+  .lecture-chip input{ accent-color:var(--primary); cursor:pointer; flex-shrink:0;}
+  .btn-link{ background:none; border:none; color:var(--primary); font-size:.85rem; font-weight:600; cursor:pointer; padding:2px 6px;}
+  .btn-link:hover{ text-decoration:underline;}
+  select{ padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:.95rem;}
+  .btn{ display:inline-block; padding:12px 24px; border-radius:10px; border:none; background:var(--primary); color:#fff; font-size:1rem; font-weight:600; cursor:pointer; transition:.15s;}
+  .btn:hover{ background:var(--primary-dark);}
+  .btn.secondary{ background:#64748b;}
+  .btn.secondary:hover{ background:#475569;}
+  .btn:disabled{ opacity:.5; cursor:not-allowed;}
+  .hud{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; color:#fff; margin-bottom:10px; font-size:.9rem;}
+  .hud span b{font-size:1.1rem;}
+  .progress-bar{ height:8px; background:rgba(255,255,255,.2); border-radius:6px; overflow:hidden; margin-bottom:18px;}
+  .progress-fill{ height:100%; background:linear-gradient(90deg,var(--accent),var(--primary)); width:0%; transition:width .3s;}
+  .tag{ display:inline-block; background:#eef2ff; color:var(--primary-dark); font-size:.75rem; font-weight:700; padding:4px 10px; border-radius:20px; margin-bottom:10px;}
+  .q-text{ font-size:1.15rem; font-weight:600; margin:0 0 18px; line-height:1.5;}
+  .options{ display:flex; flex-direction:column; gap:10px;}
+  .opt{ text-align:left; padding:14px 16px; border:2px solid #e2e8f0; border-radius:10px; background:#fff; cursor:pointer; font-size:1rem; transition:.12s; font-family:inherit;}
+  .opt:hover:not(.locked){ border-color:var(--primary); background:#eef2ff;}
+  .opt.correct{ border-color:var(--success); background:#dcfce7; font-weight:700;}
+  .opt.incorrect{ border-color:var(--danger); background:#fee2e2; font-weight:700;}
+  .opt.locked{ cursor:default;}
+  .tf-options{ display:flex; gap:14px;}
+  .tf-options .opt{ flex:1; text-align:center; font-weight:700; font-size:1.1rem;}
+  .fill-input{ width:100%; padding:14px; font-size:1.05rem; border:2px solid #e2e8f0; border-radius:10px; margin-bottom:14px;}
+  .fill-input:focus{ outline:none; border-color:var(--primary);}
+  .fill-input.correct{ border-color:var(--success); background:#dcfce7;}
+  .fill-input.incorrect{ border-color:var(--danger); background:#fee2e2;}
+  .feedback{ margin-top:16px; padding:16px; border-radius:10px; display:none;}
+  .feedback.show{ display:block; animation:fadein .25s;}
+  .feedback.correct{ background:#dcfce7; border:2px solid var(--success);}
+  .feedback.incorrect{ background:#fee2e2; border:2px solid var(--danger);}
+  .feedback h4{margin:0 0 6px;}
+  .feedback p{margin:0; font-size:.92rem; color:#334155;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .actions{ margin-top:20px; display:flex; justify-content:flex-end; gap:10px;}
+  .end-score{ font-size:3rem; font-weight:800; color:var(--primary); text-align:center; margin:10px 0;}
+  .end-sub{ text-align:center; color:var(--muted);}
+  .end-stats{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0;}
+  .stat{ background:#f8fafc; border-radius:10px; padding:14px; text-align:center;}
+  .stat .num{ font-size:1.6rem; font-weight:800; color:var(--primary-dark);}
+  .stat .lbl{ font-size:.8rem; color:var(--muted); text-transform:uppercase;}
+  .end-msg{ text-align:center; font-size:1.1rem; margin:14px 0; color:#1e293b;}
+  @media(max-width:560px){ .modes{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="title">
+    <h1>IM535 Smart Village - Revision Game</h1>
+    <p>Test yourself on all 11 lectures - earn points, build streaks, beat your best score!</p>
+  </header>
+
+  <section id="screen-start" class="screen active card">
+    <h2>Choose your challenge</h2>
+    <div class="modes" id="mode-list"></div>
+
+    <div class="lectures-section">
+      <div class="row" style="justify-content:space-between; margin:14px 0 6px;">
+        <label style="font-weight:600;">Lectures to include:</label>
+        <div>
+          <button class="btn-link" id="lec-all" type="button">Select All</button>
+          <button class="btn-link" id="lec-none" type="button">Clear All</button>
+        </div>
+      </div>
+      <div class="lectures-grid" id="lectures-grid"></div>
+    </div>
+
+    <div class="row">
+      <label for="qcount">Number of questions:</label>
+      <select id="qcount">
+        <option value="10">10 (Quick)</option>
+        <option value="20" selected>20</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+        <option value="all">All available</option>
+      </select>
+    </div>
+    <button class="btn" id="start-btn" disabled>Select a mode to start</button>
+  </section>
+
+  <section id="screen-game" class="screen">
+    <div class="hud">
+      <span>Question <b id="hud-progress">1/20</b></span>
+      <span>Score <b id="hud-score">0</b></span>
+      <span>Streak <b id="hud-streak">0</b></span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="card">
+      <span class="tag" id="q-tag"></span>
+      <p class="q-text" id="q-text"></p>
+      <div id="q-body"></div>
+      <div class="feedback" id="feedback">
+        <h4 id="fb-title"></h4>
+        <p id="fb-explain"></p>
+      </div>
+      <div class="actions">
+        <button class="btn secondary" id="quit-btn">Quit to Menu</button>
+        <button class="btn" id="next-btn" style="display:none;">Next Question</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="screen-end" class="screen card">
+    <h2 style="text-align:center;">Game Over!</h2>
+    <div class="end-score" id="end-score">0</div>
+    <div class="end-sub">Total Points</div>
+    <div class="end-stats">
+      <div class="stat"><div class="num" id="end-correct">0</div><div class="lbl">Correct</div></div>
+      <div class="stat"><div class="num" id="end-accuracy">0%</div><div class="lbl">Accuracy</div></div>
+      <div class="stat"><div class="num" id="end-total">0</div><div class="lbl">Questions</div></div>
+      <div class="stat"><div class="num" id="end-streak">0</div><div class="lbl">Best Streak</div></div>
+    </div>
+    <p class="end-msg" id="end-msg"></p>
+    <div class="actions" style="justify-content:center;">
+      <button class="btn secondary" id="menu-btn">Main Menu</button>
+      <button class="btn" id="retry-btn">Play Again</button>
+    </div>
+  </section>
+</div>
+
+<script src="data/mcq.js"></script>
+<script src="data/fill.js"></script>
+<script src="data/tf.js"></script>
+<script src="data/def.js"></script>
+<script>
+const MODES = {
+  mcq:   {name:'Multiple Choice',       desc:'Pick the correct answer from 4 options. (100 questions)', data:MCQ_DATA,  type:'mcq'},
+  fill:  {name:'Complete the Sentence', desc:'Type the missing word or phrase. (100 questions)', data:FILL_DATA, type:'fill'},
+  tf:    {name:'True or False',         desc:'Decide whether the statement is true or false. (100 questions)', data:TF_DATA, type:'tf'},
+  def:   {name:'Definition Match',      desc:'Match each term to its correct definition. (100 questions)', data:DEF_DATA, type:'def'},
+  mixed: {name:'Mixed Challenge',       desc:'A random mix of all four question types. (400 questions)', data:null, type:'mixed'}
+};
+
+let state = {};
+let selectedMode = null;
+
+const LECTURES = [
+  {key:'L1',  short:'L1 – Intro to OM',               full:'L1 - Intro to Operations Management'},
+  {key:'L2',  short:'L2 – Globalization & IB',         full:'L2 - Globalization & International Business'},
+  {key:'L3',  short:'L3 – Cultural Environments',      full:'L3 - Cultural Environments'},
+  {key:'L4',  short:'L4 – Political & Legal Env.',     full:'L4 - Political & Legal Environments'},
+  {key:'L5',  short:'L5 – Economic Environments',      full:'L5 - Economic Environments'},
+  {key:'L6',  short:'L6 – Globalization & Society',    full:'L6 - Globalization & Society'},
+  {key:'L7',  short:'L7 – Trade & Factor Mobility',    full:'L7 - Trade & Factor-Mobility Theory'},
+  {key:'L8',  short:'L8 – FX Markets',                 full:'L8 - Global Foreign-Exchange Markets'},
+  {key:'L9',  short:'L9 – Exchange Rate Determination',full:'L9 - Determination of Exchange Rates'},
+  {key:'L10', short:'L10 – Marketing Globally',        full:'L10 - Marketing Globally'},
+  {key:'L11', short:'L11 – Global Manufacturing & SCM',full:'L11 - Global Manufacturing & SCM'}
+];
+
+let selectedLectures = new Set(LECTURES.map(l=>l.key));
+
+function getLecKey(lectureStr){
+  const m = /^L(\d+)/.exec(lectureStr);
+  return m ? 'L'+m[1] : null;
+}
+
+function getAvailableCount(modeKey){
+  let pool;
+  if(modeKey==='mixed'){
+    pool = [...MCQ_DATA, ...FILL_DATA, ...TF_DATA, ...DEF_DATA];
+  } else {
+    pool = MODES[modeKey].data;
+  }
+  return pool.filter(q=>selectedLectures.has(getLecKey(q.lecture))).length;
+}
+
+function updateStartBtn(){
+  const sb = document.getElementById('start-btn');
+  if(!selectedMode){
+    sb.disabled = true;
+    sb.textContent = 'Select a mode to start';
+  } else if(selectedLectures.size===0){
+    sb.disabled = true;
+    sb.textContent = 'Select at least one lecture';
+  } else {
+    sb.disabled = false;
+    sb.textContent = `Start Game (${getAvailableCount(selectedMode)} available)`;
+  }
+}
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+const modeListEl = document.getElementById('mode-list');
+Object.keys(MODES).forEach(key=>{
+  const m = MODES[key];
+  const btn = document.createElement('div');
+  btn.className='mode-btn';
+  btn.innerHTML = `<h3>${m.name}</h3><p>${m.desc}</p>`;
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedMode = key;
+    updateStartBtn();
+  });
+  modeListEl.appendChild(btn);
+});
+
+const lecturesGridEl = document.getElementById('lectures-grid');
+LECTURES.forEach(lec=>{
+  const chip = document.createElement('label');
+  chip.className = 'lecture-chip selected';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = true;
+  cb.addEventListener('change', ()=>{
+    if(cb.checked){
+      selectedLectures.add(lec.key);
+      chip.classList.add('selected');
+    } else {
+      selectedLectures.delete(lec.key);
+      chip.classList.remove('selected');
+    }
+    updateStartBtn();
+  });
+  chip.appendChild(cb);
+  chip.appendChild(document.createTextNode(lec.short));
+  lecturesGridEl.appendChild(chip);
+});
+
+document.getElementById('lec-all').addEventListener('click', ()=>{
+  selectedLectures = new Set(LECTURES.map(l=>l.key));
+  document.querySelectorAll('#lectures-grid .lecture-chip').forEach(chip=>{
+    chip.classList.add('selected');
+    chip.querySelector('input').checked = true;
+  });
+  updateStartBtn();
+});
+
+document.getElementById('lec-none').addEventListener('click', ()=>{
+  selectedLectures = new Set();
+  document.querySelectorAll('#lectures-grid .lecture-chip').forEach(chip=>{
+    chip.classList.remove('selected');
+    chip.querySelector('input').checked = false;
+  });
+  updateStartBtn();
+});
+
+document.getElementById('start-btn').addEventListener('click', ()=>{
+  if(!selectedMode) return;
+  startGame(selectedMode);
+});
+document.getElementById('quit-btn').addEventListener('click', ()=> showScreen('start'));
+document.getElementById('menu-btn').addEventListener('click', ()=> showScreen('start'));
+document.getElementById('retry-btn').addEventListener('click', ()=> startGame(state.modeKey));
+document.getElementById('next-btn').addEventListener('click', ()=>{
+  state.index++;
+  if(state.index >= state.questions.length){
+    endGame();
+  } else {
+    renderQuestion();
+  }
+});
+
+function startGame(modeKey){
+  const countSel = document.getElementById('qcount').value;
+  let pool;
+  if(modeKey==='mixed'){
+    pool = [
+      ...MCQ_DATA.map(q=>({...q, type:'mcq'})),
+      ...FILL_DATA.map(q=>({...q, type:'fill'})),
+      ...TF_DATA.map(q=>({...q, type:'tf'})),
+      ...DEF_DATA.map(q=>({...q, type:'def'}))
+    ];
+  } else {
+    pool = MODES[modeKey].data.map(q=>({...q, type:MODES[modeKey].type}));
+  }
+  pool = pool.filter(q=>selectedLectures.has(getLecKey(q.lecture)));
+  pool = shuffle(pool);
+  const count = countSel==='all' ? pool.length : Math.min(parseInt(countSel,10), pool.length);
+  state = {
+    modeKey, questions: pool.slice(0,count), index:0, score:0, streak:0, bestStreak:0, correct:0, answered:false, lastPoints:0
+  };
+  showScreen('game');
+  renderQuestion();
+}
+
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+}
+
+function renderQuestion(){
+  state.answered = false;
+  const q = state.questions[state.index];
+  document.getElementById('hud-progress').textContent = `${state.index+1}/${state.questions.length}`;
+  document.getElementById('hud-score').textContent = state.score;
+  document.getElementById('hud-streak').textContent = state.streak;
+  document.getElementById('progress-fill').style.width = (state.index/state.questions.length*100)+'%';
+  document.getElementById('q-tag').textContent = q.lecture;
+  const fb = document.getElementById('feedback');
+  fb.classList.remove('show','correct','incorrect');
+  document.getElementById('next-btn').style.display='none';
+
+  const body = document.getElementById('q-body');
+  body.innerHTML='';
+
+  if(q.type==='mcq'){
+    document.getElementById('q-text').textContent = q.q;
+    const opts = shuffle(q.options.map((opt,i)=>({text:opt, correct:i===q.correct})));
+    const wrap = document.createElement('div');
+    wrap.className='options';
+    const optsData=[];
+    opts.forEach(o=>{
+      const b = document.createElement('button');
+      b.className='opt';
+      b.textContent=o.text;
+      optsData.push({btn:b, correct:o.correct});
+      b.addEventListener('click', ()=>handleAnswer(o.correct, optsData, q.explain, null, b));
+      wrap.appendChild(b);
+    });
+    body.appendChild(wrap);
+  } else if(q.type==='tf'){
+    document.getElementById('q-text').textContent = q.statement;
+    const wrap = document.createElement('div');
+    wrap.className='tf-options';
+    const optsData=[];
+    [true,false].forEach(val=>{
+      const b = document.createElement('button');
+      b.className='opt';
+      b.textContent = val ? 'TRUE' : 'FALSE';
+      const isCorrect = (val===q.answer);
+      optsData.push({btn:b, correct:isCorrect});
+      b.addEventListener('click', ()=>handleAnswer(isCorrect, optsData, q.explain, null, b));
+      wrap.appendChild(b);
+    });
+    body.appendChild(wrap);
+  } else if(q.type==='fill'){
+    document.getElementById('q-text').innerHTML = q.text.replace('____','<u>______</u>');
+    const input = document.createElement('input');
+    input.type='text'; input.className='fill-input'; input.placeholder='Type your answer here...';
+    body.appendChild(input);
+    const btn = document.createElement('button');
+    btn.className='btn'; btn.textContent='Submit Answer';
+    btn.addEventListener('click', ()=>{
+      if(state.answered) return;
+      const ok = checkFillAnswer(input.value, q.answer);
+      input.disabled=true; btn.disabled=true;
+      input.classList.add(ok?'correct':'incorrect');
+      handleAnswer(ok, null, q.explain, q.answer, null);
+    });
+    body.appendChild(btn);
+    input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); btn.click(); }});
+    setTimeout(()=>input.focus(), 50);
+  } else if(q.type==='def'){
+    document.getElementById('q-text').textContent = `What is the definition of: "${q.term}"?`;
+    const others = DEF_DATA.filter(d=>d.term!==q.term);
+    const distractors = shuffle(others).slice(0,3).map(d=>d.definition);
+    const opts = shuffle([{text:q.definition, correct:true}, ...distractors.map(d=>({text:d,correct:false}))]);
+    const wrap = document.createElement('div');
+    wrap.className='options';
+    const optsData=[];
+    opts.forEach(o=>{
+      const b = document.createElement('button');
+      b.className='opt';
+      b.textContent=o.text;
+      optsData.push({btn:b, correct:o.correct});
+      b.addEventListener('click', ()=>handleAnswer(o.correct, optsData, null, null, b));
+      wrap.appendChild(b);
+    });
+    body.appendChild(wrap);
+  }
+}
+
+function checkFillAnswer(userVal, answer){
+  const norm = s => s.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const u = norm(userVal);
+  const a = norm(answer);
+  if(!u) return false;
+  return u===a || a.includes(u) || u.includes(a);
+}
+
+function handleAnswer(isCorrect, optsData, explain, correctAnswerText, clickedBtn){
+  if(state.answered) return;
+  state.answered = true;
+
+  let points = 0;
+  if(isCorrect){
+    state.streak++;
+    state.bestStreak = Math.max(state.bestStreak, state.streak);
+    points = 10 + Math.min(state.streak-1,5)*2;
+    state.score += points;
+    state.correct++;
+  } else {
+    state.streak = 0;
+  }
+  state.lastPoints = points;
+
+  if(optsData){
+    optsData.forEach(o=>{
+      o.btn.disabled = true;
+      o.btn.classList.add('locked');
+      if(o.correct) o.btn.classList.add('correct');
+      else if(o.btn===clickedBtn) o.btn.classList.add('incorrect');
+    });
+  }
+
+  showFeedback(isCorrect, explain, correctAnswerText);
+}
+
+function showFeedback(isCorrect, explain, correctAnswerText){
+  const fb = document.getElementById('feedback');
+  fb.classList.add('show', isCorrect ? 'correct' : 'incorrect');
+  document.getElementById('fb-title').textContent = isCorrect
+    ? `Correct! +${state.lastPoints} points`
+    : 'Incorrect';
+  let text = '';
+  if(correctAnswerText) text = `Correct answer: "${correctAnswerText}". `;
+  text += explain || '';
+  document.getElementById('fb-explain').textContent = text.trim();
+  document.getElementById('hud-score').textContent = state.score;
+  document.getElementById('hud-streak').textContent = state.streak;
+  document.getElementById('next-btn').style.display='inline-block';
+}
+
+function endGame(){
+  showScreen('end');
+  document.getElementById('end-score').textContent = state.score;
+  document.getElementById('end-correct').textContent = `${state.correct}/${state.questions.length}`;
+  const acc = Math.round(state.correct/state.questions.length*100);
+  document.getElementById('end-accuracy').textContent = acc+'%';
+  document.getElementById('end-total').textContent = state.questions.length;
+  document.getElementById('end-streak').textContent = state.bestStreak;
+  let msg;
+  if(acc>=90) msg = "Outstanding! You really know this material.";
+  else if(acc>=75) msg = "Great job! Just a few gaps to review.";
+  else if(acc>=50) msg = "Good effort - go back over the Summary PDF for the topics you missed.";
+  else msg = "Keep practicing! Review the Summary PDF and try again.";
+  document.getElementById('end-msg').textContent = msg;
+}
+</script>
+</body>
+</html>
